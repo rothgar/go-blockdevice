@@ -50,7 +50,8 @@ type DeviceProperties struct {
 	// Serial /sys/block/<dev>/device/serial.
 	Serial string
 	// Modalias from /sys/block/<dev>/device/modalias, falling back to
-	// /sys/block/<dev>/device/device/modalias when the former is absent (common on NVMe).
+	// /sys/block/<dev>/device/device/modalias for transports (e.g. NVMe)
+	// that expose the underlying PCI device one level deeper.
 	Modalias string
 	// WWID /sys/block/<dev>/wwid.
 	WWID string
