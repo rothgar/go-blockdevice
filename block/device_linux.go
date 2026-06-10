@@ -342,7 +342,7 @@ func (d *Device) GetProperties() (*DeviceProperties, error) {
 	props := &DeviceProperties{
 		Model:    readSysFsFile(filepath.Join(sysFsPath, "device", "model")),
 		Serial:   readSysFsFile(filepath.Join(sysFsPath, "serial")),
-		Modalias: readSysFsFile(filepath.Join(sysFsPath, "device", "modalias")),
+		Modalias: readBlockDeviceModalias(sysFsPath),
 		WWID:     readSysFsFile(filepath.Join(sysFsPath, "wwid")),
 		UUID:     readSysFsFile(filepath.Join(sysFsPath, "uuid")),
 	}
@@ -382,6 +382,18 @@ func (d *Device) GetProperties() (*DeviceProperties, error) {
 
 func readNVMeFirmwareRevision(sysFsPath string) string {
 	return readSysFsFile(filepath.Join(sysFsPath, "device", "firmware_rev"))
+}
+
+// readBlockDeviceModalias returns the modalias of the block device, falling
+// back to the underlying PCI device's modalias when the block device's own
+// /device/modalias is absent. NVMe namespaces expose the PCI controller one
+// level deeper than SCSI/ATA disks.
+func readBlockDeviceModalias(sysFsPath string) string {
+	if m := readSysFsFile(filepath.Join(sysFsPath, "device", "modalias")); m != "" {
+		return m
+	}
+
+	return readSysFsFile(filepath.Join(sysFsPath, "device", "device", "modalias"))
 }
 
 func (d *Device) getTransport(sysFsPath, deviceName string) string {
