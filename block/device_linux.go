@@ -351,6 +351,16 @@ func (d *Device) GetProperties() (*DeviceProperties, error) {
 		props.WWID = readSysFsFile(filepath.Join(sysFsPath, "device", "wwid"))
 	}
 
+	if props.WWID == "" {
+		// For device-mapper devices, the WWID lives in dm/uuid as "mpath-<wwid>".
+		if dmUUID, err := os.ReadFile(filepath.Join(sysFsPath, "dm", "uuid")); err == nil {
+			uuid := strings.TrimSpace(string(dmUUID))
+			if after, ok := strings.CutPrefix(uuid, "mpath-"); ok {
+				props.WWID = after
+			}
+		}
+	}
+
 	if props.UUID == "" {
 		props.UUID = readSysFsFile(filepath.Join(sysFsPath, "device", "uuid"))
 	}
@@ -406,6 +416,22 @@ func (d *Device) getTransport(sysFsPath, deviceName string) string {
 		return "xenblk"
 	case strings.HasPrefix(deviceName, "mmcblk"):
 		return "mmc"
+	case strings.HasPrefix(deviceName, "dm-"):
+		dmUUID, err := os.ReadFile(filepath.Join(sysFsPath, "dm", "uuid"))
+		if err != nil {
+			return ""
+		}
+
+		uuid := strings.TrimSpace(string(dmUUID))
+
+		switch {
+		case strings.HasPrefix(uuid, "mpath-"), strings.HasPrefix(uuid, "part-mpath-"):
+			return "mpath"
+		case strings.HasPrefix(uuid, "LVM-"):
+			return "lvm"
+		default:
+			return "dm"
+		}
 	}
 
 	devicePath, err := os.Readlink(filepath.Join(sysFsPath, "device"))
